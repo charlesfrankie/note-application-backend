@@ -1,8 +1,10 @@
 ﻿using Azure.Core;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Win32;
 using NoteApplication.Models.Entities;
 using NoteApplication.Repositories;
+using NoteApplication.Response;
 
 namespace NoteApplication.Controllers
 {
@@ -18,7 +20,7 @@ namespace NoteApplication.Controllers
             _userRepository = userRepository;
         }
 
-        [HttpPost("register")]
+        [HttpPost("register", Name = "RegisterUser")]
         public ActionResult Register([FromBody] User user)
         {
             // Validate the user object
@@ -27,37 +29,26 @@ namespace NoteApplication.Controllers
                 return BadRequest("Invalid user data.");
             }
 
-            bool isCreated = _userRepository.CreateUser(user);
-
-            if (!isCreated)
-            {
-                return StatusCode(500, "A problem happened while handling your request.");
-            }
-
-            // Return the token
-            return Ok("User registerd successfully!");
+            int statusCode = _userRepository.CreateUser(user);
+            return new UserResponse().JsonResponse(statusCode, "User registerd successfully!");
         }
 
         [HttpPost("login")]
         public ActionResult Login([FromBody] User user)
         {
-            // Validate the user object
+            var token = "";
             if (user == null || string.IsNullOrEmpty(user.email) || string.IsNullOrEmpty(user.password))
             {
                 return BadRequest("Invalid user data.");
             }
 
-            var foundUser = _userRepository.GetUser(user);
-
-            if(foundUser == null)
+            var (statusCode, foundUser) = _userRepository.GetUser(user);
+            //return new UserResponse().JsonResponse(statusCode, "User registerd successfully!");
+            if(foundUser != null)
             {
-                return Unauthorized("Invalid username or password.");
+                token = JwtTokenHelper.GenerateToken(foundUser.id.ToString(), _config);
             }
-
-            // Generate JWT token
-            var token = JwtTokenHelper.GenerateToken(foundUser.id.ToString(), _config);
-
-            return Ok(new { id = foundUser.id, name = foundUser.name, email = foundUser.email, token = token });
+            return new UserResponse().JsonResponse(statusCode, "User login successfully!", new { data = foundUser, token });
         }
     }
 }

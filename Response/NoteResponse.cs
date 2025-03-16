@@ -4,7 +4,7 @@ namespace NoteApplication.Response
 {
     public class NoteResponse : ControllerBase
     {
-        public ActionResult JsonResponse(int statusCode, string message)
+        public ActionResult JsonResponse(int statusCode, string message, Object data = null)
         {
             if (statusCode == 403)
             {
@@ -16,7 +16,7 @@ namespace NoteApplication.Response
             }
             else if (statusCode == 200)
             {
-                return Ok(new { success = true, message });
+                return Ok(new { success = true, message, data });
             }
             else if (statusCode == 201)
             {

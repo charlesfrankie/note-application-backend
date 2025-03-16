@@ -27,7 +27,7 @@ namespace NoteApplication.Repositories
             }
         }
 
-        public bool CreateUser(User newUser)
+        public int CreateUser(User newUser)
         {
             using (IDbConnection db = _context.Database.GetDbConnection())
             {
@@ -38,7 +38,7 @@ namespace NoteApplication.Repositories
                 );
                 if (existingUser != null)
                 {
-                    return false;
+                    return 303;
                 }
 
                 // Hash password before storing
@@ -47,22 +47,26 @@ namespace NoteApplication.Repositories
                 string queryString = "INSERT INTO Users (name, email, password, created_at) VALUES (@name, @email, @password, GETDATE())";
                 int rowsAffected = db.Execute(queryString, newUser);
 
-                return rowsAffected > 0;
+                return rowsAffected > 0 ? 201 : 0;
             }
         }
 
-        public User? GetUser(User user)
+        public (int statusCode, User user) GetUser(User user)
         {
             using (IDbConnection db = _context.Database.GetDbConnection())
             {
-                var ExisitingUser = db.QueryFirstOrDefault<User>("SELECT * FROM Users WHERE email = @Email", new { Email = user.email });
-
-                if(ExisitingUser != null && VerifyPassword(user.password, ExisitingUser.password))
+                var foundUser = db.QueryFirstOrDefault<User>("SELECT * FROM Users WHERE email = @Email", new { Email = user.email });
+                if (foundUser == null)
                 {
-                    return ExisitingUser;
+                    return (404, null);
                 }
 
-                return null;
+                if(foundUser != null && VerifyPassword(user.password, foundUser.password))
+                {
+                    return (200, foundUser);
+                }
+
+                return (401, null);
             }
         }
         private static string HashPassword(string password)
